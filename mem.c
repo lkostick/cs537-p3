@@ -3,7 +3,7 @@
  * AUTHOR:   cherin@cs.wisc.edu <Cherin Joseph>
  * DATE:     20 Nov 2013
  * PROVIDES: Contains a set of library functions for memory allocation
- * MODIFIED BY: Logan Kostick, section 1
+ * MODIFIED BY: Logan Kostick, section 1 boop
  * *****************************************************************************/
 
 #include <stdio.h>
