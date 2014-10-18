@@ -3,7 +3,7 @@
  * AUTHOR:   cherin@cs.wisc.edu <Cherin Joseph>
  * DATE:     20 Nov 2013
  * PROVIDES: Contains a set of library functions for memory allocation
- * MODIFIED BY: Logan Kostick, section 1 boop
+ * MODIFIED BY: Logan Kostick, section 1; Alex Krezminski, section 1
  * *****************************************************************************/
 
 #include <stdio.h>
@@ -21,8 +21,8 @@ typedef struct block_hd{
   /* The blocks are ordered in the increasing order of addresses */
   struct block_hd* next;
 
-  /* size of the block is always a multiple of 4 */
-  /* ie, last two bits are always zero - can be used to store other information*/
+  /* size of the block is 8-byte aligned  */
+  /* ie last digit should be a multiple of 8 (0,8)  */
   /* LSB = 0 => free block */
   /* LSB = 1 => allocated/busy block */
 
