@@ -1,7 +1,6 @@
 #SRCS = libmem1.so libmem2.so libmem3.so
 
 CC = gcc
-#OPTS = -c -fpic -Wall -Werror
 OPTS1 = -c -fpic
 OPTS2 = -Wall -Werror
 
@@ -27,9 +26,3 @@ mem3.o: mem3.c
 
 clean:
 	rm -rf *.so *.o
-#mem: mem.c mem.h
-#gcc -c -Wall -m32 -fpic mem.c -O
-#gcc -shared -Wall -m32 -o libmem.so mem.o -O
-#
-#clean:
-#rm -rf mem.o libmem.so
