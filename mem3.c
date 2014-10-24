@@ -3,7 +3,7 @@
  * AUTHOR:   cherin@cs.wisc.edu <Cherin Joseph>
  * DATE:     20 Nov 2013
  * PROVIDES: Contains a set of library functions for memory allocation
- * MODIFIED BY: Logan Kostick, section 1 boop
+ * MODIFIED BY: Logan Kostick, section 1; Alex Krezminski, section 1
  * *****************************************************************************/
 
 #include <stdio.h>
@@ -21,8 +21,8 @@ typedef struct block_hd{
   /* The blocks are ordered in the increasing order of addresses */
   struct block_hd* next;
 
-  /* size of the block is always a multiple of 4 */
-  /* ie, last two bits are always zero - can be used to store other information*/
+  /* size of the block is 8-byte aligned  */
+  /* ie last digit should be a multiple of 8 (0,8)  */
   /* LSB = 0 => free block */
   /* LSB = 1 => allocated/busy block */
 
@@ -122,7 +122,7 @@ void* Mem_Alloc(int size)
   {
     return NULL;
   }
-  /* Make size a multiple of 4 */
+  /* Make size a multiple of 8 */
   msize = size % blocksize;
   if(msize == 0) 
   {
@@ -314,3 +314,28 @@ void Mem_Dump()
   fflush(stdout);
   return;
 }
+
+/* Prints out number of bytes that can be allocated in the future by calls to Mem_Alloc.  */
+/* Returns total amount of free space, not the largest contiguous space.  */
+int Mem_Available()
+{
+  int memAvailable = 0;
+  block_header* tmp; /* Pointer to traverse the list */
+  tmp = list_head; /* Set the tmp to list head */
+
+  if (tmp == NULL) // make sure memory is initialized
+    return -1; 
+
+  while(tmp != NULL) 
+  {
+    if ((tmp->size_status % 2) == 0)
+    {
+      memAvailable += tmp->size_status; // this memory is free, add it total count of available
+    }
+    tmp = tmp->next; // go to next block
+  }
+  fprintf(stdout, "Total amount of memory available = %d bytes\n", memAvailable);
+
+  return 0;
+}
+

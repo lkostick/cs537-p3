@@ -6,6 +6,9 @@ OPTS2 = -Wall -Werror
 
 all: libmem1.so libmem2.so libmem3.so
 
+main: main.c libmem3.so
+	$(CC) -lmem3 -L . -o main main.c $(OPTS2)
+
 libmem1.so: mem1.o
 	$(CC) -shared -o libmem1.so mem1.o  $(OPTS2)
 

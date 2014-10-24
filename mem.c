@@ -122,7 +122,7 @@ void* Mem_Alloc(int size)
   {
     return NULL;
   }
-  /* Make size a multiple of 4 */
+  /* Make size a multiple of 8 */
   msize = size % blocksize;
   if(msize == 0) 
   {
@@ -314,3 +314,28 @@ void Mem_Dump()
   fflush(stdout);
   return;
 }
+
+/* Prints out number of bytes that can be allocated in the future by calls to Mem_Alloc.  */
+/* Returns total amount of free space, not the largest contiguous space.  */
+int Mem_Available()
+{
+  int memAvailable = 0;
+  block_header* tmp; /* Pointer to traverse the list */
+  tmp = list_head; /* Set the tmp to list head */
+
+  if (tmp == NULL) // make sure memory is initialized
+    return -1; 
+
+  while(tmp != NULL) 
+  {
+    if ((tmp->size_status % 2) == 0)
+    {
+      memAvailable += tmp->size_status; // this memory is free, add it total count of available
+    }
+    tmp = tmp->next; // go to next block
+  }
+  fprintf(stdout, "Total amount of memory available = %d bytes\n", memAvailable);
+
+  return 0;
+}
+
