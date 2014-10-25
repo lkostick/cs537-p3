@@ -17,6 +17,10 @@
 #include <stdint.h>
 #include "mem.h"
 #include "bitmap.h"
+#include <pthread.h>
+#include "myPthread.h"
+
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 
 /* Global variable - This will always point to the first block */
 /* ie, the block with the lowest address */
@@ -42,14 +46,18 @@ int Mem_Init(int sizeOfRegion)
   void* space_ptr;
   static int allocated_once = 0;
   
+  Pthread_mutex_lock(&m);
+
   if(0 != allocated_once)
   {
     fprintf(stderr,"Error:mem.c: Mem_Init has allocated space during a previous call\n");
+    Pthread_mutex_unlock(&m);
     return -1;
   }
   if(sizeOfRegion <= 0)
   {
     fprintf(stderr,"Error:mem.c: Requested block size is not positive\n");
+    Pthread_mutex_unlock(&m);
     return -1;
   }
 
@@ -67,6 +75,7 @@ int Mem_Init(int sizeOfRegion)
   if(-1 == fd)
   {
     fprintf(stderr,"Error:mem.c: Cannot open /dev/zero\n");
+    Pthread_mutex_unlock(&m);
     return -1;
   }
   space_ptr = mmap(NULL, alloc_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
@@ -74,6 +83,7 @@ int Mem_Init(int sizeOfRegion)
   {
     fprintf(stderr,"Error:mem.c: mmap cannot allocate space\n");
     allocated_once = 0;
+    Pthread_mutex_unlock(&m);
     return -1;
   }
   
@@ -102,6 +112,7 @@ int Mem_Init(int sizeOfRegion)
   fprintf(stdout, "curr = %p, head = %p\n", curr, list_head);
   /* Remember that the 'size' stored in block size excludes the space for the header */
   close(fd); // Is this right?
+  Pthread_mutex_unlock(&m);
   return 0;
 }
 
@@ -117,6 +128,7 @@ int Mem_Init(int sizeOfRegion)
 /* Tips: Be careful with pointer arithmetic */
 void* Mem_Alloc(int size)
 {
+  Pthread_mutex_lock(&m);
 //  int blocksize = 8;
   /* Your code should go in here */
 //  int msize; /* Size to a multiple of 8 */
@@ -126,6 +138,7 @@ void* Mem_Alloc(int size)
   /* If an incorrect argument is passed in return NULL */
   if(size <= 0)
   {
+    Pthread_mutex_unlock(&m);
     return NULL;
   }
   if((*curr) < maxSlots){
@@ -138,9 +151,11 @@ void* Mem_Alloc(int size)
 	}
 	*(curr) = *(curr) + 1;	
 	setBit((curr+1), distance);
+	Pthread_mutex_unlock(&m);
 	return (void *) tmp;
 
   }
+  Pthread_mutex_unlock(&m);
   return NULL; /* If there isn't enough space, return NULL */
 }
 
@@ -156,6 +171,7 @@ void* Mem_Alloc(int size)
 /* - Coalesce if one or both of the immediate neighbours are free */
 int Mem_Free(void *ptr)
 {
+  Pthread_mutex_lock(&m);
  // /* Your code should go in here */
 //  int check = 0; /* Variable to see if ptr is from Mem_Alloc call */
   char* tmp;
@@ -166,16 +182,15 @@ int Mem_Free(void *ptr)
   tmp = list_head; 
   if(ptr == NULL) /* If ptr is NULL return -1 */
   {
+    Pthread_mutex_unlock(&m);
     return -1;
   }
   ptr1 = (char *) ptr;
-  fprintf(stdout, "ptr = %p, head = %p\n", ptr, list_head);
- 
   distance = (int) (ptr1 - list_head);
   distance = distance / 16;
-  fprintf(stdout, "distance = %d\n", distance);
 
   if((distance < 0) || (distance >= maxSlots)){
+	Pthread_mutex_unlock(&m);
   	return -1;
   }
   for(i = 0; i <= distance; i++){
@@ -186,19 +201,27 @@ int Mem_Free(void *ptr)
 	tmp += 16;
   }
   if(!check){
+	Pthread_mutex_unlock(&m);
 	return -1;	
   }
   if((testBit((curr+1), distance)) == 0){
+	Pthread_mutex_unlock(&m);
 	return -1;
   } 
   
   clearBit((curr+1), distance);
+  Pthread_mutex_unlock(&m);
   return 0;
-
 }
 
 /* Not implemented for workload 1 */
 void Mem_Dump()
 {
    return;
+}
+
+/* Not implemented for workload 1 */
+int Mem_Available()
+{
+   return 0;
 }
