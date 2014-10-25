@@ -1,0 +1,11 @@
+Name: Logan Lostick
+CSL-ID: kostick
+Name: Alex Krezminski
+CSL-ID: krezmins
+(Leave the second name and ID blank if working alone)
+
+Linux-Implementation Details:
+We started with an implementation of a memory allocator that was written last semester for CS 354. The implementation most closely matched the specification for workload 3. We first modified some details to more closely match the requirements for p3a, such as having 8-byte aligned memory accesses. Once these little details were handled, we added the Mem_Available method. After that, we had a working implementation for workload 3. Then, we implemented a bitmap for handling workload 1, as there was no way to make the linked list for free space work for the optimization necessary for WL1. The bitmap is pretty simple, with one bit for each 16 bit slice. We then turned our attention to extra credit tests, adding pthread_mutex_un/lock around critical sections of code regarding the linked list use. Ultimately we did not complete the optimization for workload 2, due to time constraints.
+
+XV6-Implementation Details:
+

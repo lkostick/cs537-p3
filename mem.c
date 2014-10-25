@@ -3,7 +3,7 @@
  * AUTHOR:   cherin@cs.wisc.edu <Cherin Joseph>
  * DATE:     20 Nov 2013
  * PROVIDES: Contains a set of library functions for memory allocation
- * MODIFIED BY: Logan Kostick, section 1 boop
+ * MODIFIED BY: Logan Kostick, section 1; Alex Krezminski, section 1
  * *****************************************************************************/
 
 #include <stdio.h>
@@ -14,6 +14,10 @@
 #include <sys/mman.h>
 #include <string.h>
 #include "mem.h"
+#include <pthread.h>
+#include "myPthread.h"
+
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* this structure serves as the header for each block */
 typedef struct block_hd{
@@ -21,8 +25,8 @@ typedef struct block_hd{
   /* The blocks are ordered in the increasing order of addresses */
   struct block_hd* next;
 
-  /* size of the block is always a multiple of 4 */
-  /* ie, last two bits are always zero - can be used to store other information*/
+  /* size of the block is 8-byte aligned  */
+  /* ie last digit should be a multiple of 8 (0,8)  */
   /* LSB = 0 => free block */
   /* LSB = 1 => allocated/busy block */
 
@@ -89,12 +93,13 @@ int Mem_Init(int sizeOfRegion)
   }
   
   allocated_once = 1;
-  
+  Pthread_mutex_lock(&lock);
   /* To begin with, there is only one big, free block */
   list_head = (block_header*)space_ptr;
   list_head->next = NULL;
   /* Remember that the 'size' stored in block size excludes the space for the header */
   list_head->size_status = alloc_size - (int)sizeof(block_header);
+  Pthread_mutex_unlock(&lock);
   close(fd); // Is this right?
   return 0;
 }
@@ -115,14 +120,16 @@ void* Mem_Alloc(int size)
   /* Your code should go in here */
   int msize; /* Size to a multiple of 8 */
   block_header* tmp; /* Pointer to traverse the list */
+  Pthread_mutex_lock(&lock);
   tmp = list_head; /* Set the tmp to list head */
   
   /* If an incorrect argument is passed in return NULL */
   if(size <= 0)
   {
+    Pthread_mutex_unlock(&lock);
     return NULL;
   }
-  /* Make size a multiple of 4 */
+  /* Make size a multiple of 8 */
   msize = size % blocksize;
   if(msize == 0) 
   {
@@ -144,6 +151,7 @@ void* Mem_Alloc(int size)
         if(tmp->size_status <= (msize + (int)sizeof(block_header)))
         {
           tmp->size_status = (tmp->size_status + 1); /* Set the block to busy */
+	  Pthread_mutex_unlock(&lock);
           return ((void*)((char*)tmp + (int)sizeof(block_header))); 
         }
         else /* If the block can be split into two */
@@ -159,7 +167,7 @@ void* Mem_Alloc(int size)
           /* Sets the new block size to the leftover space */
           tmp->next->size_status = currsize - msize - (int)sizeof(block_header); 
           tmp->size_status = msize + 1; /* Set block to busy */
-        
+	  Pthread_mutex_unlock(&lock);
           return (void*) ((char*)tmp + (int)sizeof(block_header));
        } 
 
@@ -169,7 +177,7 @@ void* Mem_Alloc(int size)
 
     tmp = tmp->next;
   } /* End while */
-
+  Pthread_mutex_unlock(&lock);
   return NULL; /* If there isn't enough space, return NULL */
 }
 
@@ -189,10 +197,12 @@ int Mem_Free(void *ptr)
   int check = 0; /* Variable to see if ptr is from Mem_Alloc call */
   block_header* tmp; /* Used to the block_header of ptr */
   block_header* prev; /* Previous block_header of ptr */
+  Pthread_mutex_lock(&lock);
   tmp = list_head; 
   prev = list_head;
   if(ptr == NULL) /* If ptr is NULL return -1 */
   {
+    Pthread_mutex_unlock(&lock);
     return -1;
   }
  
@@ -210,11 +220,13 @@ int Mem_Free(void *ptr)
   
   if(check != 1) /* If ptr wasn't allocated, return -1 as error */
   {
+    Pthread_mutex_unlock(&lock);
     return -1;
   }
   
   if((tmp->size_status % 2) == 0) /* If the block is already free return -1 */
   {
+    Pthread_mutex_unlock(&lock);
     return -1;
   }
   
@@ -244,9 +256,8 @@ int Mem_Free(void *ptr)
       prev->size_status = prev->size_status + tmp->size_status + (int)sizeof(block_header);
     }
   }
+  Pthread_mutex_unlock(&lock);
   return 0;  
-  
-
 }
 
 /* Function to be used for debug */
@@ -314,3 +325,28 @@ void Mem_Dump()
   fflush(stdout);
   return;
 }
+
+/* Prints out number of bytes that can be allocated in the future by calls to Mem_Alloc.  */
+/* Returns total amount of free space, not the largest contiguous space.  */
+int Mem_Available()
+{
+  int memAvailable = 0;
+  block_header* tmp; /* Pointer to traverse the list */
+  tmp = list_head; /* Set the tmp to list head */
+
+  if (tmp == NULL) // make sure memory is initialized
+    return -1; 
+
+  while(tmp != NULL) 
+  {
+    if ((tmp->size_status % 2) == 0)
+    {
+      memAvailable += tmp->size_status; // this memory is free, add it total count of available
+    }
+    tmp = tmp->next; // go to next block
+  }
+  fprintf(stdout, "Total amount of memory available = %d bytes\n", memAvailable);
+
+  return 0;
+}
+
